@@ -4,7 +4,8 @@ python-multipart>=0.0.6
 numpy>=1.26.0
 opencv-python-headless>=4.9.0
 pillow>=10.2.0
-
+scipy==1.17.1
+scikit-image==0.26.0
 onnxruntime>=1.16.0
 onnx==1.20.1
 flatbuffers==25.12.19
@@ -12,7 +13,6 @@ requests
 tqdm
 python-dotenv>=1.0.0
 scikit-learn
-scipy
 Cython
 albumentations
 prettytable
