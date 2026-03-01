@@ -9,18 +9,27 @@ import insightface
 from insightface.app import FaceAnalysis
 
 
-class FaceService:
-    def __init__(self):
-        """Initialize InsightFace with ArcFace model"""
-        # Initialize FaceAnalysis with buffalo_l model (includes ArcFace)
-        self.app = FaceAnalysis(
+_face_app = None
+
+def get_face_app():
+    global _face_app
+    if _face_app is None:
+        from insightface.app import FaceAnalysis
+        print("⏳ Lazy loading ArcFace model to memory...")
+        _face_app = FaceAnalysis(
             name='buffalo_s',
             providers=['CPUExecutionProvider']  # Use CPU, change to CUDAExecutionProvider for GPU
         )
         # Prepare the model (det_size controls detection quality)
-        self.app.prepare(ctx_id=0, det_size=(320, 320))
+        _face_app.prepare(ctx_id=0, det_size=(320, 320))
         print("✅ FaceService initialized with ArcFace model")
-    
+    return _face_app
+
+
+class FaceService:
+    def __init__(self):
+        """Initialize FaceService (No heavy loads here)"""
+        print("✅ FaceService struct initialized (model will be loaded on demand)")
     def decode_base64_image(self, image_base64: str) -> np.ndarray:
         """
         Decode base64 image to numpy array (BGR format for OpenCV)
@@ -49,7 +58,8 @@ class FaceService:
         Detect faces in image using InsightFace
         Returns list of detected face objects
         """
-        faces = self.app.get(image)
+        app = get_face_app()
+        faces = app.get(image)
         return faces
     
     def get_single_face_embedding(self, image_base64: str) -> Tuple[Optional[List[float]], str]:
