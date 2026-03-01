@@ -6,7 +6,8 @@ opencv-python-headless>=4.9.0
 pillow>=10.2.0
 
 onnxruntime>=1.16.0
-
+onnx==1.20.1
+flatbuffers==25.12.19
 requests
 tqdm
 python-dotenv>=1.0.0
