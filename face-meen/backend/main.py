@@ -138,7 +138,7 @@ async def register_face(request: RegisterRequest):
     if existing:
         raise HTTPException(
             status_code=409, 
-            detail=f"User '{request.user_id}' already registered. Use update endpoint or delete first."
+            detail=f"รหัส '{request.user_id}' ถูกลงทะเบียนไปแล้ว กรุณาใช้รหัสอื่นหรือลบข้อมูลเก่าก่อน"
         )
     
     # Extract embeddings for all images
@@ -201,7 +201,7 @@ async def verify_face(request: VerifyRequest):
         )
     
     # Find best match using all query embeddings
-    matched, user_id, name, score = face_service.find_best_match(
+    matched, user_id, name, score, reason = face_service.find_best_match(
         query_embeddings,
         stored_faces,
         MATCH_THRESHOLD
@@ -213,13 +213,13 @@ async def verify_face(request: VerifyRequest):
             user_id=user_id,
             name=name,
             score=round(score, 4),
-            message=f"Match found with confidence {score:.2%}"
+            message=reason
         )
     else:
         return VerifyResponse(
             matched=False,
             score=round(score, 4),
-            message=f"No match found. Best score: {score:.2%} (threshold: {MATCH_THRESHOLD:.2%})"
+            message=reason
         )
 
 

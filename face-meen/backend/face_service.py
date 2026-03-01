@@ -99,68 +99,69 @@ class FaceService:
         query_embeddings: List[List[float]],
         stored_faces: List[dict],
         threshold: float
-    ) -> Tuple[bool, Optional[str], Optional[str], float]:
+    ) -> Tuple[bool, Optional[str], Optional[str], float, str]:
         """
         Find the best matching face from stored faces.
         
-        ✅ Consistency check: each image is matched independently.
-        All images must match the SAME user. If different images match
-        different users, verification fails.
-
         Returns:
-            (matched, user_id, name, score)
+            (matched, user_id, name, score, message)
         """
         IMAGE_LABELS = ["หันขวา", "หันซ้าย", "หน้าตรง"]
 
         if not stored_faces or not query_embeddings:
-            return False, None, None, 0.0
+            return False, None, None, 0.0, "ไม่มีใบหน้าที่ลงทะเบียนในระบบ"
 
-        # Step 1: For each query image, find which user it matches best
-        per_image_results = []  # list of (best_user_id, best_name, best_score)
-
-        for idx, q_emb in enumerate(query_embeddings):
+        # Step 1: For each query image, find its best matching user
+        per_image_best = []
+        
+        for qi, q_emb in enumerate(query_embeddings):
             best_user_id = None
             best_name = None
             best_score = -1.0
-
+            
             for face in stored_faces:
                 stored_embeddings = face.get("embeddings", [])
                 if not stored_embeddings and "embedding" in face:
                     stored_embeddings = [face["embedding"]]
                 if not stored_embeddings:
                     continue
-
+                
                 for s_emb in stored_embeddings:
                     score = self.compute_cosine_similarity(q_emb, s_emb)
                     if score > best_score:
                         best_score = score
                         best_user_id = face["user_id"]
                         best_name = face["name"]
-
-            label = IMAGE_LABELS[idx] if idx < len(IMAGE_LABELS) else f"Image {idx+1}"
+            
+            label = IMAGE_LABELS[qi] if qi < len(IMAGE_LABELS) else f"Image {qi+1}"
             print(f"  📸 {label}: best match = '{best_name}' (score={best_score:.4f})")
-            per_image_results.append((best_user_id, best_name, best_score))
+            per_image_best.append((best_user_id, best_name, best_score))
 
-        # Step 2: Check if all images matched above threshold
-        all_scores = [r[2] for r in per_image_results]
-        min_score = min(all_scores)
-
-        # Step 3: Check consistency — all images must match the SAME user
-        matched_user_ids = set(r[0] for r in per_image_results if r[0] is not None)
-
+        # Step 2: Check if all images agree on the same user
+        matched_user_ids = set(uid for uid, _, _ in per_image_best if uid is not None)
+        
         if len(matched_user_ids) > 1:
-            # Different images matched different users!
-            print(f"❌ Verify FAIL: images matched different users: {matched_user_ids}")
-            return False, None, None, float(min_score)
+            names = [name for _, name, _ in per_image_best]
+            detail_parts = []
+            for i, (uid, name, sc) in enumerate(per_image_best):
+                label = IMAGE_LABELS[i] if i < len(IMAGE_LABELS) else f"Image {i+1}"
+                detail_parts.append(f"{label}='{name}'")
+            detail = ", ".join(detail_parts)
+            msg = f"ภาพแต่ละรูปตรงกับคนละคน! ({detail})"
+            print(f"❌ Verify FAIL: {msg}")
+            return False, None, None, 0.0, msg
 
-        # Step 4: Check threshold
-        if min_score >= threshold and len(matched_user_ids) == 1:
-            user_id = per_image_results[0][0]
-            name = per_image_results[0][1]
-            print(f"✅ Verify PASS: all images matched '{name}' (min_score={min_score:.4f})")
-            return True, user_id, name, float(min_score)
+        # Step 3: Use the minimum score across all images
+        min_score = min(s for _, _, s in per_image_best)
+        best_user_id = per_image_best[0][0]
+        best_name = per_image_best[0][1]
 
-        return False, None, None, float(min_score)
+        if min_score >= threshold and best_user_id:
+            print(f"✅ Verify PASS: ทุกภาพตรงกับ '{best_name}' (min_score={min_score:.4f})")
+            return True, best_user_id, best_name, float(min_score), f"ยืนยันตัวตนสำเร็จ (confidence {min_score:.2%})"
+
+        print(f"❌ Verify FAIL: score={min_score:.4f} < threshold={threshold}")
+        return False, None, None, float(min_score), f"ไม่พบใบหน้าที่ตรงกัน (คะแนนสูงสุด: {min_score:.2%}, ต้องการ: {threshold:.2%})"
 
 
 # Singleton instance
