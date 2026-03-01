@@ -18,7 +18,7 @@ class FaceService:
             providers=['CPUExecutionProvider']  # Use CPU, change to CUDAExecutionProvider for GPU
         )
         # Prepare the model (det_size controls detection quality)
-        self.app.prepare(ctx_id=0, det_size=(640, 640))
+        self.app.prepare(ctx_id=0, det_size=(320, 320))
         print("✅ FaceService initialized with ArcFace model")
     
     def decode_base64_image(self, image_base64: str) -> np.ndarray:
