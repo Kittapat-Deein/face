@@ -95,15 +95,66 @@ export default function VerifyPage() {
                             )}
 
                             {/* Score Display */}
-                            <div className="inline-flex items-center gap-3 px-4 py-2 bg-white/5 rounded-full">
-                                <span className="text-gray-400 text-sm">Confidence:</span>
-                                <span className={`font-bold ${getScoreColor(result.score)}`}>
-                                    {(result.score * 100).toFixed(1)}%
-                                </span>
-                                <span className={`text-xs ${getScoreColor(result.score)}`}>
-                                    ({getScoreLabel(result.score)})
-                                </span>
-                            </div>
+                            {result.matched ? (
+                                /* ✅ PASS: Show all per-image scores */
+                                <div className="space-y-3 mt-4">
+                                    <p className="text-gray-400 text-sm">คะแนนแต่ละภาพ:</p>
+                                    {result.per_image_scores && (
+                                        <div className="flex justify-center gap-4">
+                                            {['หันขวา', 'หันซ้าย', 'หน้าตรง'].map((label, i) => {
+                                                const s = result.per_image_scores?.[i] ?? 0;
+                                                return (
+                                                    <div key={i} className="text-center px-3 py-2 bg-white/5 rounded-xl">
+                                                        <p className="text-xs text-gray-400 mb-1">{label}</p>
+                                                        <p className={`font-bold ${getScoreColor(s)}`}>
+                                                            {(s * 100).toFixed(1)}%
+                                                        </p>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
+                                    <div className="inline-flex items-center gap-3 px-4 py-2 bg-white/5 rounded-full">
+                                        <span className="text-gray-400 text-sm">Overall:</span>
+                                        <span className={`font-bold ${getScoreColor(result.score)}`}>
+                                            {(result.score * 100).toFixed(1)}%
+                                        </span>
+                                        <span className={`text-xs ${getScoreColor(result.score)}`}>
+                                            ({getScoreLabel(result.score)})
+                                        </span>
+                                    </div>
+                                </div>
+                            ) : (
+                                /* ❌ FAIL: Show weakest image info */
+                                <div className="space-y-3 mt-4">
+                                    {result.weakest_image && (
+                                        <div className="px-4 py-3 bg-red-500/10 border border-red-500/30 rounded-xl">
+                                            <p className="text-red-400 text-sm">
+                                                ⚠️ ภาพที่คะแนนต่ำสุด: <strong>{result.weakest_image}</strong>
+                                            </p>
+                                            <p className="text-red-300 text-xs mt-1">
+                                                คะแนน: {(result.score * 100).toFixed(1)}% (ต้องการ ≥ 45%)
+                                            </p>
+                                        </div>
+                                    )}
+                                    {result.per_image_scores && (
+                                        <div className="flex justify-center gap-4">
+                                            {['หันขวา', 'หันซ้าย', 'หน้าตรง'].map((label, i) => {
+                                                const s = result.per_image_scores?.[i] ?? 0;
+                                                const isWeakest = label === result.weakest_image;
+                                                return (
+                                                    <div key={i} className={`text-center px-3 py-2 rounded-xl ${isWeakest ? 'bg-red-500/20 border border-red-500/50' : 'bg-white/5'}`}>
+                                                        <p className="text-xs text-gray-400 mb-1">{label}</p>
+                                                        <p className={`font-bold ${isWeakest ? 'text-red-400' : getScoreColor(s)}`}>
+                                                            {(s * 100).toFixed(1)}%
+                                                        </p>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
                         </div>
 
                         {/* Captured Image Preview */}

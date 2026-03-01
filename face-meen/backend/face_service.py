@@ -101,45 +101,46 @@ class FaceService:
         threshold: float
     ) -> Tuple[bool, Optional[str], Optional[str], float]:
         """
-        Find the best matching face from stored faces by comparing all query embeddings
+        Find the best matching face from stored faces by comparing all query embeddings 
         against all stored embeddings for each user.
-
+        
         Returns:
             (matched, user_id, name, score)
         """
         if not stored_faces or not query_embeddings:
             return False, None, None, 0.0
-
+        
         best_overall_match = None
         best_overall_score = -1.0
-
+        
         for face in stored_faces:
             stored_embeddings = face.get("embeddings", [])
-            # For backward compatibility if any old records still exist
             if not stored_embeddings and "embedding" in face:
                 stored_embeddings = [face["embedding"]]
 
             if not stored_embeddings:
                 continue
-
+                
             # Find max similarity across all combinations of query and stored embeddings
             max_score_for_user = -1.0
             for q_emb in query_embeddings:
+                best_score_for_query = -1.0
                 for s_emb in stored_embeddings:
                     score = self.compute_cosine_similarity(q_emb, s_emb)
                     if score > max_score_for_user:
                         max_score_for_user = score
-
+                        
             if max_score_for_user > best_overall_score:
                 best_overall_score = max_score_for_user
                 best_overall_match = face
-
+        
         if best_overall_score >= threshold and best_overall_match:
             return True, best_overall_match["user_id"], best_overall_match["name"], float(best_overall_score)
-
+        
         return False, None, None, float(best_overall_score)
 
 
+# Singleton instance
 _face_service: Optional[FaceService] = None
 
 def get_face_service() -> FaceService:

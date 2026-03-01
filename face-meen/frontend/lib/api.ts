@@ -2,7 +2,7 @@
  * API Client for Face Recognition Backend
  */
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://face-cned.onrender.com';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 export interface RegisterRequest {
     user_id: string;
@@ -27,6 +27,8 @@ export interface VerifyResponse {
     name?: string;
     score: number;
     message: string;
+    per_image_scores?: number[];
+    weakest_image?: string;
 }
 
 export interface UserInfo {

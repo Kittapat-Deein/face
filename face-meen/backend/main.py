@@ -81,6 +81,8 @@ class VerifyResponse(BaseModel):
     name: Optional[str] = None
     score: float
     message: str
+    per_image_scores: Optional[List[float]] = None
+    weakest_image: Optional[str] = None
 
 
 class UserInfo(BaseModel):
