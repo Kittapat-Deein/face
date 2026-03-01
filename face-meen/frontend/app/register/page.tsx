@@ -1,33 +1,33 @@
 'use client';
 
-import { useState } from 'react';
 import Camera from '@/components/Camera';
 import { api, RegisterResponse } from '@/lib/api';
 import Link from 'next/link';
+import { useState } from 'react';
 
 export default function RegisterPage() {
     const [userId, setUserId] = useState('');
     const [name, setName] = useState('');
-    const [capturedImage, setCapturedImage] = useState<string | null>(null);
+    const [capturedImages, setCapturedImages] = useState<string[]>([]);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [result, setResult] = useState<RegisterResponse | null>(null);
     const [error, setError] = useState<string | null>(null);
 
-    const handleCapture = (imageBase64: string) => {
-        setCapturedImage(imageBase64);
+    const handleCapture = (imagesBase64: string[]) => {
+        setCapturedImages(imagesBase64);
         setResult(null);
         setError(null);
     };
 
     const handleRetake = () => {
-        setCapturedImage(null);
+        setCapturedImages([]);
         setResult(null);
         setError(null);
     };
 
     const handleSubmit = async () => {
-        if (!userId.trim() || !name.trim() || !capturedImage) {
-            setError('Please fill in all fields and capture a photo');
+        if (!userId.trim() || !name.trim() || capturedImages.length !== 3) {
+            setError('Please fill in all fields and complete the face capture sequence');
             return;
         }
 
@@ -38,7 +38,7 @@ export default function RegisterPage() {
             const response = await api.register({
                 user_id: userId.trim(),
                 name: name.trim(),
-                image_base64: capturedImage,
+                images_base64: capturedImages,
             });
             setResult(response);
         } catch (err) {
@@ -52,7 +52,7 @@ export default function RegisterPage() {
     const handleReset = () => {
         setUserId('');
         setName('');
-        setCapturedImage(null);
+        setCapturedImages([]);
         setResult(null);
         setError(null);
     };
@@ -82,13 +82,18 @@ export default function RegisterPage() {
                             <span className="text-cyan-400 font-mono">{result.user_id}</span>
                         </p>
 
-                        {capturedImage && (
+                        {capturedImages.length > 0 && (
                             <div className="mb-6">
-                                <img
-                                    src={capturedImage}
-                                    alt="Registered face"
-                                    className="w-32 h-32 mx-auto rounded-2xl object-cover border-2 border-green-500/50"
-                                />
+                                <div className="flex justify-center gap-4">
+                                    {capturedImages.map((img, i) => (
+                                        <img
+                                            key={i}
+                                            src={img}
+                                            alt={`Registered face ${i}`}
+                                            className="w-24 h-24 rounded-2xl object-cover border-2 border-green-500/50"
+                                        />
+                                    ))}
+                                </div>
                             </div>
                         )}
 
@@ -140,15 +145,20 @@ export default function RegisterPage() {
                         </div>
 
                         {/* Camera or Preview */}
-                        {capturedImage ? (
+                        {capturedImages.length > 0 ? (
                             <div className="space-y-4">
                                 <div className="glass-card p-4 text-center">
-                                    <p className="text-sm text-gray-400 mb-4">Captured Photo</p>
-                                    <img
-                                        src={capturedImage}
-                                        alt="Captured face"
-                                        className="max-w-sm mx-auto rounded-xl border border-white/10"
-                                    />
+                                    <p className="text-sm text-gray-400 mb-4">Captured Photos (Left, Right, Straight)</p>
+                                    <div className="flex justify-center gap-4 flex-wrap">
+                                        {capturedImages.map((img, i) => (
+                                            <img
+                                                key={i}
+                                                src={img}
+                                                alt={`Captured face ${i}`}
+                                                className="w-28 h-28 object-cover mx-auto rounded-xl border border-white/10"
+                                            />
+                                        ))}
+                                    </div>
                                 </div>
                                 <div className="flex gap-4 justify-center">
                                     <button

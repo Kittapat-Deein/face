@@ -43,7 +43,7 @@ class FaceStorage:
             # Atomic replace
             os.replace(temp_path, self.file_path)
     
-    def add_face(self, user_id: str, name: str, embedding: List[float]) -> bool:
+    def add_face(self, user_id: str, name: str, embeddings: List[List[float]]) -> bool:
         """
         Add a new face to storage
         Returns False if user_id already exists
@@ -59,14 +59,14 @@ class FaceStorage:
         data["items"].append({
             "user_id": user_id,
             "name": name,
-            "embedding": embedding,
+            "embeddings": embeddings,
             "created_at": datetime.now().astimezone().isoformat()
         })
         
         self._write_data(data)
         return True
     
-    def update_face(self, user_id: str, name: str, embedding: List[float]) -> bool:
+    def update_face(self, user_id: str, name: str, embeddings: List[List[float]]) -> bool:
         """
         Update an existing face in storage
         Returns False if user_id doesn't exist
@@ -76,7 +76,7 @@ class FaceStorage:
         for item in data["items"]:
             if item["user_id"] == user_id:
                 item["name"] = name
-                item["embedding"] = embedding
+                item["embeddings"] = embeddings
                 item["updated_at"] = datetime.now().astimezone().isoformat()
                 self._write_data(data)
                 return True

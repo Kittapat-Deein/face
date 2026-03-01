@@ -61,7 +61,7 @@ storage = FaceStorage(FACES_FILE)
 class RegisterRequest(BaseModel):
     user_id: str
     name: str
-    image_base64: str
+    images_base64: List[str]
 
 
 class RegisterResponse(BaseModel):
@@ -72,7 +72,7 @@ class RegisterResponse(BaseModel):
 
 
 class VerifyRequest(BaseModel):
-    image_base64: str
+    images_base64: List[str]
 
 
 class VerifyResponse(BaseModel):
@@ -128,8 +128,8 @@ async def register_face(request: RegisterRequest):
         raise HTTPException(status_code=400, detail="user_id cannot be empty")
     if not request.name.strip():
         raise HTTPException(status_code=400, detail="name cannot be empty")
-    if not request.image_base64:
-        raise HTTPException(status_code=400, detail="image_base64 cannot be empty")
+    if not request.images_base64 or len(request.images_base64) == 0:
+        raise HTTPException(status_code=400, detail="images_base64 cannot be empty")
     
     # Check if user already exists
     existing = storage.get_face_by_id(request.user_id)
@@ -139,10 +139,10 @@ async def register_face(request: RegisterRequest):
             detail=f"User '{request.user_id}' already registered. Use update endpoint or delete first."
         )
     
-    # Extract embedding
-    embedding, status = face_service.get_single_face_embedding(request.image_base64)
+    # Extract embeddings for all images
+    embeddings, status = face_service.get_multiple_face_embeddings(request.images_base64)
     
-    if embedding is None:
+    if embeddings is None:
         print(f"❌ Registration failed for user {request.user_id}: {status}")
         raise HTTPException(status_code=400, detail=status)
     
@@ -150,7 +150,7 @@ async def register_face(request: RegisterRequest):
     success = storage.add_face(
         user_id=request.user_id.strip(),
         name=request.name.strip(),
-        embedding=embedding
+        embeddings=embeddings
     )
     
     if not success:
@@ -175,13 +175,13 @@ async def verify_face(request: VerifyRequest):
     """
     face_service = get_face_service()
     
-    if not request.image_base64:
-        raise HTTPException(status_code=400, detail="image_base64 cannot be empty")
+    if not request.images_base64 or len(request.images_base64) == 0:
+        raise HTTPException(status_code=400, detail="images_base64 cannot be empty")
     
-    # Extract embedding
-    embedding, status = face_service.get_single_face_embedding(request.image_base64)
+    # Extract embeddings for all images
+    query_embeddings, status = face_service.get_multiple_face_embeddings(request.images_base64)
     
-    if embedding is None:
+    if query_embeddings is None:
         return VerifyResponse(
             matched=False,
             score=0.0,
@@ -198,9 +198,9 @@ async def verify_face(request: VerifyRequest):
             message="No registered faces in the system"
         )
     
-    # Find best match
+    # Find best match using all query embeddings
     matched, user_id, name, score = face_service.find_best_match(
-        embedding,
+        query_embeddings,
         stored_faces,
         MATCH_THRESHOLD
     )

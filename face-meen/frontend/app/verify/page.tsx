@@ -1,24 +1,24 @@
 'use client';
 
-import { useState } from 'react';
 import Camera from '@/components/Camera';
 import { api, VerifyResponse } from '@/lib/api';
 import Link from 'next/link';
+import { useState } from 'react';
 
 export default function VerifyPage() {
     const [isProcessing, setIsProcessing] = useState(false);
     const [result, setResult] = useState<VerifyResponse | null>(null);
-    const [capturedImage, setCapturedImage] = useState<string | null>(null);
+    const [capturedImages, setCapturedImages] = useState<string[]>([]);
     const [error, setError] = useState<string | null>(null);
 
-    const handleCapture = async (imageBase64: string) => {
-        setCapturedImage(imageBase64);
+    const handleCapture = async (imagesBase64: string[]) => {
+        setCapturedImages(imagesBase64);
         setIsProcessing(true);
         setError(null);
         setResult(null);
 
         try {
-            const response = await api.verify({ image_base64: imageBase64 });
+            const response = await api.verify({ images_base64: imagesBase64 });
             setResult(response);
         } catch (err) {
             const message = err instanceof Error ? err.message : 'Verification failed';
@@ -30,7 +30,7 @@ export default function VerifyPage() {
 
     const handleReset = () => {
         setResult(null);
-        setCapturedImage(null);
+        setCapturedImages([]);
         setError(null);
     };
 
@@ -64,8 +64,8 @@ export default function VerifyPage() {
                         <div className={`glass-card p-8 text-center ${result.matched ? 'border-green-500/30' : 'border-red-500/30'}`}>
                             {/* Result Icon */}
                             <div className={`w-20 h-20 mx-auto mb-6 rounded-full flex items-center justify-center ${result.matched
-                                    ? 'bg-green-500/20 success-pulse'
-                                    : 'bg-red-500/20'
+                                ? 'bg-green-500/20 success-pulse'
+                                : 'bg-red-500/20'
                                 }`}>
                                 {result.matched ? (
                                     <svg className="w-10 h-10 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -107,15 +107,20 @@ export default function VerifyPage() {
                         </div>
 
                         {/* Captured Image Preview */}
-                        {capturedImage && (
+                        {capturedImages.length > 0 && (
                             <div className="glass-card p-4">
-                                <p className="text-sm text-gray-400 text-center mb-3">Captured Photo</p>
-                                <img
-                                    src={capturedImage}
-                                    alt="Captured face"
-                                    className={`max-w-xs mx-auto rounded-xl border-2 ${result.matched ? 'border-green-500/50' : 'border-red-500/50'
-                                        }`}
-                                />
+                                <p className="text-sm text-gray-400 text-center mb-3">Captured Photos</p>
+                                <div className="flex justify-center flex-wrap gap-4">
+                                    {capturedImages.map((img, i) => (
+                                        <img
+                                            key={i}
+                                            src={img}
+                                            alt={`Captured face ${i}`}
+                                            className={`w-28 h-28 object-cover rounded-xl border-2 ${result.matched ? 'border-green-500/50' : 'border-red-500/50'
+                                                }`}
+                                        />
+                                    ))}
+                                </div>
                             </div>
                         )}
 

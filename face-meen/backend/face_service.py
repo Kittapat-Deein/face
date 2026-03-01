@@ -65,6 +65,10 @@ class FaceService:
             # Decode image
             image = self.decode_base64_image(image_base64)
             print(f"📐 Image decoded: {image.shape[1]}×{image.shape[0]}px (channels: {image.shape[2]})")
+
+            # Debug: Save the received image to verify what the backend is getting
+            cv2.imwrite(r"debug_received_image.jpg", image)
+            print("📸 Saved debug image to debug_received_image.jpg")
             
             # Pad image to at least 640×640 for reliable detection
             h, w = image.shape[:2]
@@ -97,8 +101,18 @@ class FaceService:
             
         except ValueError as e:
             return None, str(e)
-        except Exception as e:
-            return None, f"Error processing image: {str(e)}"
+    def get_multiple_face_embeddings(self, images_base64: List[str]) -> Tuple[Optional[List[List[float]]], str]:
+        """
+        Extract embeddings from a list of images.
+        All images must contain exactly one face.
+        """
+        embeddings = []
+        for i, img_b64 in enumerate(images_base64):
+            emb, status = self.get_single_face_embedding(img_b64)
+            if emb is None:
+                return None, f"Image {i + 1}: {status}"
+            embeddings.append(emb)
+        return embeddings, "Success"
     
     def compute_cosine_similarity(self, embedding1: List[float], embedding2: List[float]) -> float:
         """
@@ -121,36 +135,48 @@ class FaceService:
     
     def find_best_match(
         self, 
-        query_embedding: List[float], 
+        query_embeddings: List[List[float]], 
         stored_faces: List[dict],
         threshold: float
     ) -> Tuple[bool, Optional[str], Optional[str], float]:
         """
-        Find the best matching face from stored faces
+        Find the best matching face from stored faces by comparing all query embeddings 
+        against all stored embeddings for each user.
         
         Returns:
             (matched, user_id, name, score)
         """
-        if not stored_faces:
+        if not stored_faces or not query_embeddings:
             return False, None, None, 0.0
         
-        best_match = None
-        best_score = -1.0
+        best_overall_match = None
+        best_overall_score = -1.0
         
         for face in stored_faces:
-            score = self.compute_cosine_similarity(
-                query_embedding, 
-                face["embedding"]
-            )
-            
-            if score > best_score:
-                best_score = score
-                best_match = face
+            stored_embeddings = face.get("embeddings", [])
+            # For backward compatibility if any old records still exist
+            if not stored_embeddings and "embedding" in face:
+                stored_embeddings = [face["embedding"]]
+                
+            if not stored_embeddings:
+                continue
+                
+            # Find max similarity across all combinations of query and stored embeddings
+            max_score_for_user = -1.0
+            for q_emb in query_embeddings:
+                for s_emb in stored_embeddings:
+                    score = self.compute_cosine_similarity(q_emb, s_emb)
+                    if score > max_score_for_user:
+                        max_score_for_user = score
+                        
+            if max_score_for_user > best_overall_score:
+                best_overall_score = max_score_for_user
+                best_overall_match = face
         
-        if best_score >= threshold and best_match:
-            return True, best_match["user_id"], best_match["name"], best_score
+        if best_overall_score >= threshold and best_overall_match:
+            return True, best_overall_match["user_id"], best_overall_match["name"], float(best_overall_score)
         
-        return False, None, None, best_score
+        return False, None, None, float(best_overall_score)
 
 
 # Singleton instance
