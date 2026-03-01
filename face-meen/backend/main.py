@@ -143,6 +143,7 @@ async def register_face(request: RegisterRequest):
     embedding, status = face_service.get_single_face_embedding(request.image_base64)
     
     if embedding is None:
+        print(f"❌ Registration failed for user {request.user_id}: {status}")
         raise HTTPException(status_code=400, detail=status)
     
     # Store in JSON

@@ -14,7 +14,7 @@ class FaceService:
         """Initialize InsightFace with ArcFace model"""
         # Initialize FaceAnalysis with buffalo_l model (includes ArcFace)
         self.app = FaceAnalysis(
-            name='buffalo_l',
+            name='buffalo_s',
             providers=['CPUExecutionProvider']  # Use CPU, change to CUDAExecutionProvider for GPU
         )
         # Prepare the model (det_size controls detection quality)
@@ -64,6 +64,18 @@ class FaceService:
         try:
             # Decode image
             image = self.decode_base64_image(image_base64)
+            print(f"📐 Image decoded: {image.shape[1]}×{image.shape[0]}px (channels: {image.shape[2]})")
+            
+            # Pad image to at least 640×640 for reliable detection
+            h, w = image.shape[:2]
+            target = max(640, h, w)
+            if h < target or w < target:
+                padded = np.zeros((target, target, 3), dtype=np.uint8)
+                y_offset = (target - h) // 2
+                x_offset = (target - w) // 2
+                padded[y_offset:y_offset+h, x_offset:x_offset+w] = image
+                image = padded
+                print(f"📐 Padded to: {image.shape[1]}×{image.shape[0]}px")
             
             # Detect faces
             faces = self.detect_faces(image)

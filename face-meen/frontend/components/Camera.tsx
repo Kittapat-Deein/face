@@ -60,7 +60,7 @@ export default function Camera({ onCapture, isCapturing = false }: CameraProps) 
         }
     }, []);
 
-    // Capture image from video
+    // Capture only the oval guide region, then upscale for InsightFace
     const captureImage = useCallback(() => {
         if (!videoRef.current || !canvasRef.current) return;
 
@@ -75,46 +75,35 @@ export default function Camera({ onCapture, isCapturing = false }: CameraProps) 
 
         if (vW === 0 || vH === 0) return;
 
-        // Container dimensions (displayed video)
+        // Map oval guide (w-48=192px, h-64=256px) from screen → native video pixels
         const rect = video.getBoundingClientRect();
-        const containerW = rect.width;
-        const containerH = rect.height;
+        const scale = Math.max(rect.width / vW, rect.height / vH);
 
-        // Video is styled with object-cover, calculate actual scale
-        const scale = Math.max(containerW / vW, containerH / vH);
+        // Crop region in native video pixels (tight crop around oval guide)
+        const PADDING = 1.3;
+        const cropW = Math.min(Math.round((192 / scale) * PADDING), vW);
+        const cropH = Math.min(Math.round((256 / scale) * PADDING), vH);
 
-        // Guide dimensions in screen pixels (w-48 = 192px, h-64 = 256px)
-        const guideW = 192;
-        const guideH = 256;
+        // Center-crop coordinates
+        const sx = Math.max(0, Math.round(vW / 2 - cropW / 2));
+        const sy = Math.max(0, Math.round(vH / 2 - cropH / 2));
 
-        // Calculate crop dimensions on the intrinsic video
-        const cropW = guideW / scale;
-        const cropH = guideH / scale;
+        // Upscale output to match InsightFace det_size=(640,640)
+        const minOut = 640;
+        const upscale = cropW < minOut ? minOut / cropW : 1;
+        const outW = Math.round(cropW * upscale);
+        const outH = Math.round(cropH * upscale);
 
-        // Center coordinates in video source
-        const cx = vW / 2;
-        const cy = vH / 2;
+        canvas.width = outW;
+        canvas.height = outH;
 
-        const sx = cx - cropW / 2;
-        const sy = cy - cropH / 2;
-
-        // Set canvas size to the cropped dimensions
-        canvas.width = Math.round(cropW);
-        canvas.height = Math.round(cropH);
-
-        // Draw cropped region (mirror for selfie
-        //  mode)
-        ctx.translate(canvas.width, 0);
+        // Mirror horizontally (undo CSS scaleX(-1) selfie flip)
+        ctx.translate(outW, 0);
         ctx.scale(-1, 1);
-        ctx.drawImage(
-            video,
-            sx, sy, cropW, cropH,   // Source coordinates
-            0, 0, canvas.width, canvas.height // Destination coordinates
-        );
+        ctx.drawImage(video, sx, sy, cropW, cropH, 0, 0, outW, outH);
         ctx.setTransform(1, 0, 0, 1, 0, 0);
 
-        // Convert to base64 JPEG
-        const imageBase64 = canvas.toDataURL('image/jpeg', 0.9);
+        const imageBase64 = canvas.toDataURL('image/jpeg', 0.95);
         onCapture(imageBase64);
     }, [onCapture]);
 
