@@ -101,43 +101,66 @@ class FaceService:
         threshold: float
     ) -> Tuple[bool, Optional[str], Optional[str], float]:
         """
-        Find the best matching face from stored faces by comparing all query embeddings 
-        against all stored embeddings for each user.
+        Find the best matching face from stored faces.
         
+        ✅ Consistency check: each image is matched independently.
+        All images must match the SAME user. If different images match
+        different users, verification fails.
+
         Returns:
             (matched, user_id, name, score)
         """
+        IMAGE_LABELS = ["หันขวา", "หันซ้าย", "หน้าตรง"]
+
         if not stored_faces or not query_embeddings:
             return False, None, None, 0.0
-        
-        best_overall_match = None
-        best_overall_score = -1.0
-        
-        for face in stored_faces:
-            stored_embeddings = face.get("embeddings", [])
-            if not stored_embeddings and "embedding" in face:
-                stored_embeddings = [face["embedding"]]
 
-            if not stored_embeddings:
-                continue
-                
-            # Find max similarity across all combinations of query and stored embeddings
-            max_score_for_user = -1.0
-            for q_emb in query_embeddings:
-                best_score_for_query = -1.0
+        # Step 1: For each query image, find which user it matches best
+        per_image_results = []  # list of (best_user_id, best_name, best_score)
+
+        for idx, q_emb in enumerate(query_embeddings):
+            best_user_id = None
+            best_name = None
+            best_score = -1.0
+
+            for face in stored_faces:
+                stored_embeddings = face.get("embeddings", [])
+                if not stored_embeddings and "embedding" in face:
+                    stored_embeddings = [face["embedding"]]
+                if not stored_embeddings:
+                    continue
+
                 for s_emb in stored_embeddings:
                     score = self.compute_cosine_similarity(q_emb, s_emb)
-                    if score > max_score_for_user:
-                        max_score_for_user = score
-                        
-            if max_score_for_user > best_overall_score:
-                best_overall_score = max_score_for_user
-                best_overall_match = face
-        
-        if best_overall_score >= threshold and best_overall_match:
-            return True, best_overall_match["user_id"], best_overall_match["name"], float(best_overall_score)
-        
-        return False, None, None, float(best_overall_score)
+                    if score > best_score:
+                        best_score = score
+                        best_user_id = face["user_id"]
+                        best_name = face["name"]
+
+            label = IMAGE_LABELS[idx] if idx < len(IMAGE_LABELS) else f"Image {idx+1}"
+            print(f"  📸 {label}: best match = '{best_name}' (score={best_score:.4f})")
+            per_image_results.append((best_user_id, best_name, best_score))
+
+        # Step 2: Check if all images matched above threshold
+        all_scores = [r[2] for r in per_image_results]
+        min_score = min(all_scores)
+
+        # Step 3: Check consistency — all images must match the SAME user
+        matched_user_ids = set(r[0] for r in per_image_results if r[0] is not None)
+
+        if len(matched_user_ids) > 1:
+            # Different images matched different users!
+            print(f"❌ Verify FAIL: images matched different users: {matched_user_ids}")
+            return False, None, None, float(min_score)
+
+        # Step 4: Check threshold
+        if min_score >= threshold and len(matched_user_ids) == 1:
+            user_id = per_image_results[0][0]
+            name = per_image_results[0][1]
+            print(f"✅ Verify PASS: all images matched '{name}' (min_score={min_score:.4f})")
+            return True, user_id, name, float(min_score)
+
+        return False, None, None, float(min_score)
 
 
 # Singleton instance
