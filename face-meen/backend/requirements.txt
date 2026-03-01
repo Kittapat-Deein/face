@@ -13,3 +13,4 @@ tqdm
 python-dotenv>=1.0.0
 scipy==1.17.1
 scikit-image==0.26.0
+albumentations==2.0.8
