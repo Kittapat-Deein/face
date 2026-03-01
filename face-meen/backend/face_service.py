@@ -17,7 +17,7 @@ def get_face_app():
 
         print("⏳ Lazy loading ArcFace model to memory...")
         _face_app = FaceAnalysis(
-            name="buffalo_s",  # หรือ buffalo_sc ถ้าจะเล็กกว่า
+            name="buffalo_sc",  # หรือ buffalo_sc ถ้าจะเล็กกว่า
             providers=["CPUExecutionProvider"]
         )
         # ✅ CPU ต้อง ctx_id=-1
