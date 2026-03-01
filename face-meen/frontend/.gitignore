@@ -39,3 +39,31 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+
+# Python
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+**/*.pyd
+**/.Python
+**/.venv/
+**/venv/
+**/.env
+
+# VS Code
+.vscode/
+
+# Node
+**/node_modules/
+**/.next/
+**/dist/
+**/build/
+
+# OS / misc
+.DS_Store
+Thumbs.db
+
+# Logs / temp weird files
+**/[[]213*
+**/26.0.1

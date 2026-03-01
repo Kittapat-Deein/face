@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState, useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 interface CameraProps {
     onCapture: (imageBase64: string) => void;
@@ -70,14 +70,47 @@ export default function Camera({ onCapture, isCapturing = false }: CameraProps) 
 
         if (!ctx) return;
 
-        // Set canvas size to match video
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
+        const vW = video.videoWidth;
+        const vH = video.videoHeight;
 
-        // Draw video frame to canvas (mirror for selfie mode)
+        if (vW === 0 || vH === 0) return;
+
+        // Container dimensions (displayed video)
+        const rect = video.getBoundingClientRect();
+        const containerW = rect.width;
+        const containerH = rect.height;
+
+        // Video is styled with object-cover, calculate actual scale
+        const scale = Math.max(containerW / vW, containerH / vH);
+
+        // Guide dimensions in screen pixels (w-48 = 192px, h-64 = 256px)
+        const guideW = 192;
+        const guideH = 256;
+
+        // Calculate crop dimensions on the intrinsic video
+        const cropW = guideW / scale;
+        const cropH = guideH / scale;
+
+        // Center coordinates in video source
+        const cx = vW / 2;
+        const cy = vH / 2;
+
+        const sx = cx - cropW / 2;
+        const sy = cy - cropH / 2;
+
+        // Set canvas size to the cropped dimensions
+        canvas.width = Math.round(cropW);
+        canvas.height = Math.round(cropH);
+
+        // Draw cropped region (mirror for selfie
+        //  mode)
         ctx.translate(canvas.width, 0);
         ctx.scale(-1, 1);
-        ctx.drawImage(video, 0, 0);
+        ctx.drawImage(
+            video,
+            sx, sy, cropW, cropH,   // Source coordinates
+            0, 0, canvas.width, canvas.height // Destination coordinates
+        );
         ctx.setTransform(1, 0, 0, 1, 0, 0);
 
         // Convert to base64 JPEG

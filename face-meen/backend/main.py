@@ -101,7 +101,7 @@ class DeleteResponse(BaseModel):
 
 # ===== API Endpoints =====
 
-@app.get("/")
+@app.get("/docs")
 async def root():
     """API Health check"""
     return {
